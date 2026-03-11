@@ -51,7 +51,7 @@ library(see)
 # Import data sets
 ```{r}
 
-brfss_data24 <- read_csv("data/brfss24.csv")
+brfss_data24 <- read_csv("../brfssdata/brfss24.csv")
 
 ```
 
@@ -140,19 +140,5 @@ fp_data_nomiss_split <- initial_validation_split(
 training_data <- training(fp_data_nomiss_split)
 test_data     <- testing(fp_data_nomiss_split)
 validation_data <- validation(fp_data_nomiss_split)
-
-```
-
-# 
-```{r}
-
-```
-
-
-```{r}
-
-```
-
-```{r}
 
 ```
