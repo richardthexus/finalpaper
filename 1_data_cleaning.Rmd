@@ -1,0 +1,158 @@
+---
+title: "data_cleaning"
+author: "Richard Adejumola"
+date: "2026-03-09"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    code_folding: show
+---
+
+
+# Load relevant libraries
+```{r, include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(tidytext)
+library(tidyclust)
+library(ClusterR)
+library(klaR)
+library(GGally)
+library(knitr)
+library(gtsummary)
+library(devtools)
+library(ggmosaic)
+
+library(reportRmd)
+library(sjPlot)
+library(plotly)
+library(psych)
+library(parallel)
+library(finalfit)
+library(gtsummary)
+library(mlbench)
+library(vip)
+library(rsample)
+library(tune)
+library(recipes)
+library(yardstick)
+library(parsnip)
+library(glmnet)
+library(themis)
+library(corrr)
+library(performance)
+library(utils)
+library(see)
+
+```
+
+
+# Import data sets
+```{r}
+
+brfss_data24 <- read_csv("data/brfss24.csv")
+
+```
+
+# Filter dataset for relevant variables
+```{r}
+fp_data <- brfss_data24 %>% 
+      select(
+        state = '_STATE',                   sex = SEXVAR,
+        bmi = "_BMI5",                      marital = MARITAL,
+        education = EDUCA,                  education2 = '_EDUCAG',
+        employment = EMPLOY1,               income = INCOME3, 
+        weight_lb = WEIGHT2,                height_in = HEIGHT3,
+        weighting = "_LLCPWT",              ethnicity = "_IMPRACE",
+        age =  '_AGE80',                    age_grp = '_AGE_G',
+        
+        health_rating = GENHLTH,            health_insurance = PRIMINS2, 
+        is_insured = '_HLTHPL2',            last_checkup = CHECKUP1, 
+        exercise = EXERANY2,                teeth_lost = RMVTETH4, 
+        heart_attack = CVDINFR4,            coronary_hd = CVDCRHD4, 
+        stroke = CVDSTRK3,                  asthma = ASTHMA3, 
+        ever_cancer = CHCOCNC1,             ever_copd = CHCCOPD3, 
+        ever_depression = ADDEPEV3,         ever_ckd = CHCKDNY2,
+        ever_arthritis = HAVARTH4,          ever_diabetes = DIABETE4,       
+        age_had_dm = DIABAGE4, 
+         
+        
+        smoke = SMOKE100,                   av_drinks_daily = AVEDRNK4, 
+        last_bld_sugar_test = PDIABTS1,     prediabetes = PREDIAB2, 
+        dm_type = DIABTYPE,                 insulin = INSULIN1,             
+        checked_hba1c = CHKHEMO3, 
+        eye_exam_dil = EYEEXAM1,            eye_exam_back = DIABEYE1, 
+        dm_education = DIABEDU1,            dm_feet = FEETSORE,        
+        emotional_sup = EMTSUPRT,           lonely = SDLONELY
+        )
+        
+```
+
+
+# Apply listwise deletion
+
+```{r}
+
+fp_data_nomiss <- fp_data %>% drop_na(
+        'bmi', 'ever_diabetes', 'age_had_dm',
+        'health_rating', 'exercise', 'teeth_lost', 
+        'coronary_hd', 'stroke', 'ever_cancer', 
+        'ever_copd', 'ever_arthritis', 'insulin', 'checked_hba1c' , 
+        'eye_exam_dil' ,  'eye_exam_back',
+        'dm_education' , 'dm_feet'
+        ) 
+#Filter dataset for non-missing values for these variables
+
+```
+
+# View summary of complete cases
+```{r}
+
+rm_covsum(
+  data = fp_data_nomiss,
+  covs = c('state',  'sex', 'bmi', 'marital' ,
+        'education', 'education2', 'employment', 'income' , 
+        'weight_lb', 'height_in' , 'weighting', 'ethnicity',
+        
+        'health_rating',  'health_insurance', 'is_insured',   'last_checkup', 
+        'exercise', 'teeth_lost' , 'heart_attack' , 'coronary_hd' , 
+        'stroke', 'asthma' , 'ever_cancer',    'ever_copd' , 
+        
+        'ever_depression',  'ever_ckd', 'ever_arthritis',  'ever_diabetes' ,       
+        'age_had_dm', 'smoke',
+        
+        'dm_type', 'insulin', 'checked_hba1c' , 'eye_exam_dil' ,  'eye_exam_back', 
+        'dm_education' , 'dm_feet' , 'emotional_sup' , 'lonely' )
+  )
+
+```
+
+# Split the dataset into training, test, validation sets
+```{r}
+set.seed(11235)
+
+fp_data_nomiss_split <- initial_validation_split(
+  fp_data_nomiss,
+  strata = dm_type, 
+  prop = c(0.5, 0.3)) 
+
+training_data <- training(fp_data_nomiss_split)
+test_data     <- testing(fp_data_nomiss_split)
+validation_data <- validation(fp_data_nomiss_split)
+
+```
+
+# 
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+```{r}
+
+```
