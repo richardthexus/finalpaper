@@ -115,16 +115,15 @@ rm_covsum(
         'education', 'education2', 'employment', 'income' , 
         'weight_lb', 'height_in' , 'weighting', 'ethnicity',
         
-        'health_rating',  'health_insurance', 'is_insured',   'last_checkup', 
+        'health_rating', 'health_insurance', 'is_insured', 'last_checkup', 
         'exercise', 'teeth_lost' , 'heart_attack' , 'coronary_hd' , 
-        'stroke', 'asthma' , 'ever_cancer',    'ever_copd' , 
+        'stroke', 'asthma' , 'ever_cancer', 'ever_copd' , 
         
         'ever_depression',  'ever_ckd', 'ever_arthritis',  'ever_diabetes' ,       
-        'age_had_dm', 'smoke',
-        
-        'dm_type', 'insulin', 'checked_hba1c' , 'eye_exam_dil' ,  'eye_exam_back', 
-        'dm_education' , 'dm_feet' , 'emotional_sup' , 'lonely' )
-  )
+        'age_had_dm', 'smoke', 'dm_type', 'insulin', 'checked_hba1c', 
+        'eye_exam_dil' ,  'eye_exam_back', 'dm_education' , 'dm_feet' , 
+        'emotional_sup' , 'lonely' )
+        )
 
 ```
 

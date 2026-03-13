@@ -55,6 +55,7 @@ The machine learning techniques to be applied broadly include:
 
 * Binary logistic regression
 * Classification tree
+* Principal component analysis 
 
 # References
 
