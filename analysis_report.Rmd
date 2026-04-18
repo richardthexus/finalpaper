@@ -32,7 +32,46 @@ The data used in this study will be obtained from the Behavioral Risk Factor Sur
 ## Outcome variable
 * Lifetime diagnosis with depression 
 
+## Predictors
+| No. | Variable                  | Description |
+|-----|---------------------------|----------|
+| 1   | Sex                       | Female/Male                                                         |
+| 2   | Urban living              | Whether the respondent lived in a metropolis (Yes/No)               |
+| 3   | Body mass index           | Underweight / Normal weight / Overweight / Obese                    |
+| 4   | Marital status            | Married / Divorced, Widowed, Separated / Never married, single      |
+| 5   | Education                 | High school/College incomplete/College complete                     |
+| 6   | Employment                | Employed/Unemployed                                                 |
+| 7   | Ethnicity                 | Black/White/Other                                                   |
+| 8   | Age                       | Age of respondent at time of survey                                 |
+| 9   | Physical health not good    | Zero days /  1-13 days / 14+ days                                 |
+| 10  | Mental health good      | Zero days /  1-13 days / 14+ days                                     |
+| 11  | Last medical checkup      |                                                                     |
+| 12  | Exercise                  | In past 30 days - Yes / No                                          |
+| 13  | Heart attack              | Lifetime diagnosis - Yes / No                                       |
+| 14  | Stroke                    | Lifetime diagnosis - Yes / No                                       |
+| 15  | Sight                     | Have difficulty seeing - Yes / No                                   |
+| 16  | Memory                    | Have difficulty with remembering things - Yes / No                  |
+| 17  | Walk                      | Have difficulty walking - Yes / No                                  |
+| 18  | Deaf                      | Have difficulty hearing - Yes / No                                  |
+| 19  | Arthritis                 | Lifetime diagnosis - Yes / No                                       |
+| 20  | Asthma                    | Lifetime diagnosis - Yes / No                                       |
+| 21  | Age of diabetes diagnosis |                                                                     |
+| 22  | Type of diabetes          | Type 1 / Type 2                                                     |
 
-# Model Comparison
+
+# ML algorithms used
+* KNN
+* Binary logistic regression
+
+## Model Comparison
 
 By comparable metrics (accuracy and ROC), both the logistic model and KNN performed well `(accuracy & roc > 75%)` in discriminating between persons with diabetes who have depression vs. those who do not. However, the binary logistic regression model achieves better performance than the KNN algorithm `(accuracy = 81.8% > 78.6%, roc = 84.2% > 77.1%)`. 
+
+
+# References
+
+1. Alam U, Asghar O, Azmi S, Malik RA. General aspects of diabetes mellitus. Handbook of clinical neurology. 2014 Jan 1;126:211-22.
+2. Robinson DJ, Coons M, Haensel H, Vallis M, Yale JF, Diabetes Canada Clinical Practice Guidelines Expert Committee. Diabetes and mental health. Canadian journal of diabetes. 2018 Apr 1;42:S130-41.
+3. Holt RI, De Groot M, Golden SH. Diabetes and depression. Current diabetes reports. 2014 Jun;14(6):491.
+4. Roy T, Lloyd CE. Epidemiology of depression and diabetes: a systematic review. J Affect Disord. 2012;142 Suppl:S8-S21. doi:10.1016/S0165-0327(12)70004-6 
+5. CDC - 2024 BRFSS Survey Data and documentation [Internet]. Available from: https://www.cdc.gov/brfss/annual_data/annual_2024.html 

@@ -453,8 +453,13 @@ Regression</h1>
 <ul>
 <li><a href="#study-design" id="toc-study-design"><span class="toc-section-number">3.1</span> Study Design</a></li>
 <li><a href="#outcome-variable" id="toc-outcome-variable"><span class="toc-section-number">3.2</span> Outcome variable</a></li>
+<li><a href="#predictors" id="toc-predictors"><span class="toc-section-number">3.3</span> Predictors</a></li>
 </ul></li>
-<li><a href="#model-comparison" id="toc-model-comparison"><span class="toc-section-number">4</span> Model Comparison</a></li>
+<li><a href="#ml-algorithms-used" id="toc-ml-algorithms-used"><span class="toc-section-number">4</span> ML algorithms used</a>
+<ul>
+<li><a href="#model-comparison" id="toc-model-comparison"><span class="toc-section-number">4.1</span> Model Comparison</a></li>
+</ul></li>
+<li><a href="#references" id="toc-references"><span class="toc-section-number">5</span> References</a></li>
 </ul>
 </div>
 
@@ -504,15 +509,167 @@ states and territories in the US [5].</p>
 <li>Lifetime diagnosis with depression</li>
 </ul>
 </div>
+<div id="predictors" class="section level2" number="3.3">
+<h2><span class="header-section-number">3.3</span> Predictors</h2>
+<table>
+<colgroup>
+<col width="11%" />
+<col width="64%" />
+<col width="23%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>No.</th>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Sex</td>
+<td>Female/Male</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Urban living</td>
+<td>Whether the respondent lived in a metropolis (Yes/No)</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Body mass index</td>
+<td>Underweight / Normal weight / Overweight / Obese</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Marital status</td>
+<td>Married / Divorced, Widowed, Separated / Never married, single</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Education</td>
+<td>High school/College incomplete/College complete</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Employment</td>
+<td>Employed/Unemployed</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Ethnicity</td>
+<td>Black/White/Other</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Age</td>
+<td>Age of respondent at time of survey</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Physical health not good</td>
+<td>Zero days / 1-13 days / 14+ days</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>Mental health good</td>
+<td>Zero days / 1-13 days / 14+ days</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Last medical checkup</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>Exercise</td>
+<td>In past 30 days - Yes / No</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>Heart attack</td>
+<td>Lifetime diagnosis - Yes / No</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>Stroke</td>
+<td>Lifetime diagnosis - Yes / No</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>Sight</td>
+<td>Have difficulty seeing - Yes / No</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>Memory</td>
+<td>Have difficulty with remembering things - Yes / No</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>Walk</td>
+<td>Have difficulty walking - Yes / No</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>Deaf</td>
+<td>Have difficulty hearing - Yes / No</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>Arthritis</td>
+<td>Lifetime diagnosis - Yes / No</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>Asthma</td>
+<td>Lifetime diagnosis - Yes / No</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td>Age of diabetes diagnosis</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td>Type of diabetes</td>
+<td>Type 1 / Type 2</td>
+</tr>
+</tbody>
+</table>
 </div>
-<div id="model-comparison" class="section level1" number="4">
-<h1><span class="header-section-number">4</span> Model Comparison</h1>
+</div>
+<div id="ml-algorithms-used" class="section level1" number="4">
+<h1><span class="header-section-number">4</span> ML algorithms used</h1>
+<ul>
+<li>KNN</li>
+<li>Binary logistic regression</li>
+</ul>
+<div id="model-comparison" class="section level2" number="4.1">
+<h2><span class="header-section-number">4.1</span> Model Comparison</h2>
 <p>By comparable metrics (accuracy and ROC), both the logistic model and
 KNN performed well <code>(accuracy &amp; roc &gt; 75%)</code> in
 discriminating between persons with diabetes who have depression
 vs. those who do not. However, the binary logistic regression model
 achieves better performance than the KNN algorithm
 <code>(accuracy = 81.8% &gt; 78.6%, roc = 84.2% &gt; 77.1%)</code>.</p>
+</div>
+</div>
+<div id="references" class="section level1" number="5">
+<h1><span class="header-section-number">5</span> References</h1>
+<ol style="list-style-type: decimal">
+<li>Alam U, Asghar O, Azmi S, Malik RA. General aspects of diabetes
+mellitus. Handbook of clinical neurology. 2014 Jan 1;126:211-22.</li>
+<li>Robinson DJ, Coons M, Haensel H, Vallis M, Yale JF, Diabetes Canada
+Clinical Practice Guidelines Expert Committee. Diabetes and mental
+health. Canadian journal of diabetes. 2018 Apr 1;42:S130-41.</li>
+<li>Holt RI, De Groot M, Golden SH. Diabetes and depression. Current
+diabetes reports. 2014 Jun;14(6):491.</li>
+<li>Roy T, Lloyd CE. Epidemiology of depression and diabetes: a
+systematic review. J Affect Disord. 2012;142 Suppl:S8-S21. <a href="doi:10.1016/S0165-0327(12)70004-6" class="uri">doi:10.1016/S0165-0327(12)70004-6</a></li>
+<li>CDC - 2024 BRFSS Survey Data and documentation [Internet]. Available
+from: <a href="https://www.cdc.gov/brfss/annual_data/annual_2024.html" class="uri">https://www.cdc.gov/brfss/annual_data/annual_2024.html</a></li>
+</ol>
 </div>
 
 
