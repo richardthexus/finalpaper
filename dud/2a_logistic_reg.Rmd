@@ -1,0 +1,136 @@
+---
+title: "ML Binary Logistic Regression"
+author: "Richard Adejumola"
+date: "2026-04-10"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    code_folding: show
+---
+
+
+# Logistic Regression
+
+## Running the regression
+```{r}
+logistic_model <- logistic_reg() %>%
+        set_engine("glm") %>%
+        set_mode("classification") %>% 
+        fit(ever_depression ~ ., data = train_data)
+```
+
+
+## Use trained model on test data
+```{r}
+pred_class <- predict(logistic_model,
+                      new_data = test_data,
+                      type = "class")
+
+table(pred_class$.pred_class)
+```
+
+
+### Observed counts in outcome (test data)
+```{r}
+table(test_data$ever_depression)
+```
+
+
+### Generate predicted probabilities
+```{r}
+pred_prob <- predict(logistic_model,
+                      new_data = test_data,
+                      type = "prob")
+head(pred_prob)
+```
+
+### Compare predicted probabilities to observed class
+```{r}
+diabetes_results <- test_data %>%
+  select(ever_depression) %>%
+  bind_cols(pred_class, pred_prob)
+
+head(diabetes_results)
+```
+
+## Model Evaluation
+### Confusion matrix
+```{r}
+conf_mat(diabetes_results, truth = ever_depression,
+         estimate = .pred_class)
+```
+
+### Accuracy
+```{r}
+accuracy(diabetes_results, truth = ever_depression,
+         estimate = .pred_class)
+```
+
+### Sensitivity
+```{r}
+sens(diabetes_results, truth = ever_depression,
+    estimate = .pred_class)
+```
+
+### Specificity
+```{r}
+spec(diabetes_results, truth = ever_depression,
+    estimate = .pred_class)
+```
+
+### Precision
+```{r}
+precision(diabetes_results, truth = ever_depression,
+    estimate = .pred_class)
+```
+
+### ROC Curve
+```{r}
+roc_auc(diabetes_results,
+        truth = ever_depression,
+        .pred_0)
+
+roc_curve <- diabetes_results %>%
+  roc_curve(truth = ever_depression, .pred_0) %>%
+  autoplot()
+
+plot(roc_curve)
+```
+
+### All metrics
+```{r}
+metrics <- metric_set(accuracy, sens, spec, precision, recall, f_meas)
+
+all_metrics_lr <- metrics(diabetes_results,
+               truth = ever_depression,
+               estimate = .pred_class)
+               
+kable(all_metrics_lr)
+```
+
+## Feature importance
+```{r}
+coeff <- tidy(logistic_model) %>%
+  filter(term != "(Intercept)") %>%
+  arrange(desc(abs(estimate))) %>%
+  slice_head(n = 15)
+
+kable(coeff)
+
+ggplot(coeff, aes(x = reorder(term, abs(estimate)), y = estimate, fill = estimate > 0)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("tomato", "steelblue"),
+                    labels = c("Decrease", "Increase"),
+                    name   = "Odds person with DM has depression") +
+  labs(
+    title = "Top 10 Most Important Features — Logistic Regression",
+    x     = NULL,
+    y     = "Coefficient Estimate"
+  ) +
+  theme_minimal()
+```
+
+
+

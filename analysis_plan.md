@@ -19,11 +19,11 @@ Diabetes is a metabolic disease that affects the body’s ability to metabolize 
 
 Using machine learning classification algorithms: 
 
-1. Estimate the associations between lifetime diagnosis of depression and diabetes diagnosisadjusting for sociodemographic characteristics, comorbidities, and health habits (e.g., smoking & alcohol use) for adults living in the United States
+1. Estimate the associations between lifetime diagnosis of depression and diabetes diagnosis, adjusting for sociodemographic characteristics, comorbidities, and health habits (e.g., smoking & alcohol use) for adults living in the United States
 
 2. Estimate the associations between lifetime diagnosis of depression and type of diabetes, adjusting for the aforementioned covariates among adults living with diabetes in the United States. 
 
-3. Evaluate and compare the performances of the algorithm for Objectives 1 & 2. 
+3. Evaluate and compare the performances of the algorithms for Objectives 1 & 2. 
 
 # Methodology
 

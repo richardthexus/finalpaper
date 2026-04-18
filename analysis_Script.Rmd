@@ -1,0 +1,734 @@
+---
+title: "Machine Learning - Binary Logistic Regression"
+author: "Richard Adejumola"
+date: "2026-04-10"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    code_folding: show
+---
+
+
+
+#### Load relevant libraries
+```{r, include=FALSE}
+library(janitor)
+library(skimr)
+library(tidyverse)
+library(tidymodels)
+library(tidytext)
+library(tidyclust)
+library(ClusterR)
+library(klaR)
+library(GGally)
+library(knitr)
+library(gtsummary)
+library(devtools)
+library(ggmosaic)
+
+library(reportRmd)
+library(sjPlot)
+library(plotly)
+library(psych)
+library(parallel)
+library(finalfit)
+library(gtsummary)
+library(mlbench)
+library(vip)
+library(rsample)
+library(tune)
+library(recipes)
+library(yardstick)
+library(parsnip)
+library(glmnet)
+library(themis)
+library(corrr)
+library(performance)
+library(utils)
+library(see)
+
+library(themis)
+library(kknn)
+library(microbenchmark)
+pacman::p_load(
+  rio,            # import/export
+  here,           # file pathways
+  flextable,      # make HTML tables 
+  officer,        # helper functions for tables
+  tidyverse)      # data management, summary, and visualization
+```
+
+# Data Wrangling
+## Import survey data
+
+The data comes from the 2024 Behavioral Risk Factor Surveillance System. There were 457,670 respondents and 301 variables. 
+```{r}
+brfss_data24 <- read_csv("../brfssdata/brfss24.csv")
+```
+
+
+## Filter survey data for relevant variables
+
+We are only interested in a subset of variables that we suspect predict the outcome of lifetime diagnosis of depression among persons with diabetes. Here, we filter and rename variables. 
+```{r class.source = 'fold-hide'}
+fp_data_vars <- brfss_data24 %>% 
+      select(
+        id = SEQNO,                         metropolis = '_METSTAT',            marital = MARITAL, 
+        state = '_STATE',                   sex = SEXVAR,                       
+        bmi = "_BMI5",                      bmi_cat = "_BMI5CAT",               education = '_EDUCAG',
+        employment = EMPLOY1,               sight = BLIND,                      age =  '_AGE80',
+        age_grp = '_AGE_G',                 ethnicity = "_IMPRACE",             income2 = '_INCOMG1',
+        income = INCOME3,                   weight_lb = WEIGHT2,                height_in = HEIGHT3,
+        health_rating = GENHLTH,            physical_health = '_PHYS14D',       mental_health = '_MENT14D',         
+        memory = DECIDE,                    walk = DIFFWALK,                    deaf = DEAF,                                       health_insurance = PRIMINS2,        exercise = EXERANY2,
+        is_insured = '_HLTHPL2',            last_checkup = CHECKUP1,            heart_attack = CVDINFR4,                           coronary_hd = CVDCRHD4,             stroke = CVDSTRK3,                 asthma = ASTHMA3,                                   ever_cancer = CHCOCNC1,             ever_copd = CHCCOPD3, 
+        ever_depression = ADDEPEV3,         ever_ckd = CHCKDNY2,                age_had_dm = DIABAGE4,
+        ever_arthritis = HAVARTH4,          ever_diabetes = DIABETE4,           dm_type = DIABTYPE,   
+        checked_hba1c = CHKHEMO3,           dm_education = DIABEDU1,            dm_feet = FEETSORE,        
+        )
+```
+
+## Filter survey respondents for the study sample
+
+This data step filters for observations who have diabetes and know the type of diabetes they have. Persons who were not diagnosed with diabetes at the time of survey are excluded from downstream analysis. 
+
+There are 65,809 individuals with diabetes. However, diabetes type was only reported for 13,780. 
+
+```{r}
+fp_data <- fp_data_vars %>% 
+    mutate(
+      ever_diabetes = case_when(
+        ever_diabetes > 1 ~ NA_real_, #code as missing
+        .default = ever_diabetes
+      ))
+      
+fp_data_sample <- fp_data %>% drop_na('ever_diabetes' ) 
+knows_dm_type <- fp_data_sample %>% drop_na('dm_type' ) 
+
+fp_data_sample %>% tabyl(ever_diabetes)
+knows_dm_type %>% tabyl(dm_type)
+
+```
+
+
+#### Randomly assign diabetes type for missing response
+
+If we perform the analysis on 13,780 only, we exclude a large proportion of the data. Hence, we will assign a diabetes type by random assignment to the individuals who reported having diabetes but whose diabetes type was not collected. The assignment is as such: 90% type 1 diabetes and 10% type 2 diabetes. The rationale is T2DM accounts for approximately 90% of all cases of diabetes diagnosed in the United States (and globally). 
+
+```{r}
+fp_data_sample %>% tabyl(dm_type)
+
+set.seed(1123581321)
+
+fp_data_sample2 <- fp_data_sample %>%
+  mutate(row_id = row_number()) %>%
+  
+  left_join(
+    fp_data_sample %>%
+      mutate(row_id = row_number()) %>%
+      filter(is.na(dm_type) | dm_type==7) %>% 
+      slice_sample(prop = 0.9) %>%
+      mutate(to_recode = TRUE) %>%
+      select(row_id, to_recode),
+    by = "row_id"
+  ) %>%
+  
+  mutate(
+    dm_type = case_when(
+      is.na(dm_type) & to_recode == TRUE  ~ 2,
+      is.na(dm_type) & is.na(to_recode)   ~ 1,
+        dm_type == 7 & to_recode == TRUE  ~ 2,
+        dm_type == 7 & is.na(to_recode)   ~ 1,
+      dm_type == 9 ~ NA_real_, #code refused as missing
+      .default = dm_type
+    )
+  ) %>%
+  
+  select(-row_id, -to_recode)   
+
+fp_data_sample2 %>% tabyl(dm_type) 
+```
+
+#### View summary of imported data
+```{r results='hide'}
+summary(fp_data_sample2)
+```
+
+## Additional Data preprocessing
+
+At this stage, we are considering a new, smaller subset of variables from the ones filtered from the original survey data. 
+
+#### Select candidate variables for the final models
+```{r results='hide'}
+data_myvars <- fp_data_sample2 %>% 
+      select(
+        id, sex, metropolis, bmi_cat, marital, education, employment, ethnicity, age_grp, physical_health, mental_health, last_checkup, exercise, heart_attack, stroke, sight, memory, walk, deaf, ever_arthritis, asthma, ever_depression, age_had_dm, dm_type) 
+
+summary(data_myvars)
+```
+
+#### Clean variables 
+
+Some levels of variables include invalid levels that should be considered missing. For instance, income, education, employment, and marital status, which all have levels "7", 9", and "11", which are missing response categories in the 2024 BRFSS survey codebook. 
+
+```{r results='hide'}
+
+data_myvars_clean <- data_myvars %>% 
+    mutate(
+      education = case_when(
+        education > 4 ~ NA_real_,
+        .default = education
+      ),
+      employment = case_when(
+        employment > 8 ~ NA_real_,
+          .default = employment
+      ),
+      marital = case_when(
+        marital > 6 ~ NA_real_,
+          .default = marital
+      ),
+      physical_health = case_when(
+        physical_health > 3 ~ NA_real_,
+          .default = physical_health
+      ),
+      mental_health = case_when(
+        mental_health > 3 ~ NA_real_,
+          .default = mental_health
+      ),
+      memory = case_when(
+        memory > 2 ~ NA_real_,
+          .default = memory
+      ),
+      walk = case_when(
+        walk > 2 ~ NA_real_,
+          .default = walk
+      ),
+      deaf = case_when(
+        deaf > 2 ~ NA_real_,
+          .default = deaf
+      ),
+      sight = case_when(
+        sight > 2 ~ NA_real_,
+        .default = sight
+      ),
+      last_checkup = case_when(
+        last_checkup > 4 ~ NA_real_,
+          .default = last_checkup
+      ),
+      exercise = case_when(
+        exercise > 2 ~ NA_real_,
+          .default = exercise
+      ),
+      heart_attack = case_when(
+        heart_attack > 2 ~ NA_real_,
+          .default = heart_attack
+      ),
+      stroke = case_when(
+        stroke > 2 ~ NA_real_,
+          .default = stroke
+      ), 
+      asthma = case_when(
+        asthma > 2 ~ NA_real_,
+          .default = asthma
+      ), 
+      ever_depression = case_when(
+        ever_depression > 2 ~ NA_real_,
+          .default = ever_depression
+      ),
+      ever_arthritis = case_when(
+        ever_arthritis > 2 ~ NA_real_,
+          .default = ever_arthritis
+      ),
+      age_had_dm = case_when(
+        age_had_dm > 97 ~ NA_real_,
+          .default = age_had_dm
+      )
+    )
+
+summary(data_myvars_clean)
+```
+
+
+
+#### Review missingness in candidate variables for final model
+```{r}
+skim(data_myvars_clean)
+data_myvars_clean %>% tabyl(sex)
+data_myvars_clean %>% tabyl(metropolis)
+data_myvars_clean %>% tabyl(bmi_cat)
+data_myvars_clean %>% tabyl(marital)
+data_myvars_clean %>% tabyl(ethnicity)
+data_myvars_clean %>% tabyl(education)
+data_myvars_clean %>% tabyl(employment)
+
+data_myvars_clean %>% tabyl(mental_health)
+data_myvars_clean %>% tabyl(physical_health)
+data_myvars_clean %>% tabyl(age_grp)
+data_myvars_clean %>% tabyl(last_checkup)
+data_myvars_clean %>% tabyl(exercise)
+data_myvars_clean %>% tabyl(heart_attack)
+data_myvars_clean %>% tabyl(asthma)
+
+data_myvars_clean %>% tabyl(stroke)
+
+data_myvars_clean %>% tabyl(ever_depression)
+
+data_myvars_clean %>% tabyl(ever_arthritis)
+data_myvars_clean %>% tabyl(dm_type)
+data_myvars_clean %>% tabyl(memory)
+data_myvars_clean %>% tabyl(walk)
+data_myvars_clean %>% tabyl(deaf)
+data_myvars_clean %>% tabyl(sight)
+data_myvars_clean %>% tabyl(dm_type)
+```
+
+
+#### Drop obs with missing values
+```{r results='hide'}
+final_data <- data_myvars_clean %>% 
+      drop_na(
+        id, sex, metropolis, bmi_cat, marital, education, employment, ethnicity, age_grp, physical_health, mental_health, last_checkup, exercise, heart_attack, stroke, sight, memory, walk, deaf, ever_arthritis, asthma, ever_depression, age_had_dm, dm_type) 
+
+summary(final_data)
+```
+
+#### Recode reference level of variables
+```{r results='hide'}
+
+final_data_recoded <- final_data %>% 
+    mutate(
+      sex = case_when(
+        sex == 2 ~ 1,
+        sex == 1 ~ 0, #male ref level
+        .default = sex
+      ),
+      metropolis = case_when(
+        metropolis == 1 ~ 0, #yes
+        metropolis == 2 ~ 1, 
+        .default = metropolis
+      ),
+      sight = case_when(
+        sight == 2 ~ 0, #no ref
+        .default = sight
+      ),
+      memory = case_when(
+        memory == 2 ~ 0, #no ref
+        .default = memory
+      ),
+      walk = case_when(
+        walk == 2 ~ 0, #no ref
+        .default = walk
+      ),
+      deaf = case_when(
+        deaf == 2 ~ 0, #no ref
+        .default = deaf
+      ),
+      bmi_cat = case_when(
+        bmi_cat == 2 ~ 0, #normal weight ref level
+        bmi_cat == 1 ~ 1,
+        bmi_cat == 3 ~ 2,
+        bmi_cat == 4 ~ 3,
+        .default = bmi_cat
+      ),
+      marital = case_when(
+        marital == 1 ~ 0, #married ref
+        marital == 2 ~ 1,
+        marital == 3 ~ 1,
+        marital == 4 ~ 1, 
+        marital == 5 ~ 2,
+        marital == 6 ~ 2,
+          .default = marital
+      ),
+      education = case_when(
+        education == 4 ~ 0, #college complete ref
+        .default = education
+      ),
+      employment = case_when(
+        employment == 1 ~ 0, #employed/self-employed ref.
+        employment == 2 ~ 0,
+        employment == 3 ~ 1,
+        employment == 4 ~ 1,
+        employment == 5 ~ 1,
+        employment == 6 ~ 1,
+        employment == 7 ~ 1,
+        employment == 8 ~ 1,
+        .default = employment
+      ),
+       
+      ethnicity = case_when(
+        ethnicity == 1 ~ 0, #white ref.
+        ethnicity == 2 ~ 1, #black
+        ethnicity == 3 ~ 2,
+        ethnicity == 4 ~ 2, 
+        ethnicity == 5 ~ 2,
+        ethnicity == 6 ~ 2,
+          .default = ethnicity
+      ),
+      age_grp = case_when(
+        age_grp == 6 ~ 0, #65 years and older ref
+        age_grp == 1 ~ 1,
+        age_grp == 2 ~ 1,
+        age_grp == 3 ~ 1,
+        age_grp == 4 ~ 1,
+        age_grp == 5 ~ 2,
+          .default = age_grp
+      ),
+      physical_health = case_when(
+        physical_health == 1 ~ 0, #zero days ref
+        physical_health == 2 ~ 1,
+        physical_health == 3 ~ 2,
+          .default = physical_health
+      ),
+      mental_health = case_when(
+        mental_health == 1 ~ 0, #zero days ref
+        mental_health == 2 ~ 1,
+        mental_health == 3 ~ 2,
+          .default = mental_health
+      ),
+      last_checkup = case_when(
+        last_checkup == 1 ~ 0, #within last year ref
+        last_checkup == 2 ~ 1, 
+        last_checkup == 3 ~ 1, 
+        last_checkup == 4 ~ 1,
+        last_checkup == 5 ~ 1,
+          .default = last_checkup
+      ),
+      exercise = case_when(
+        exercise == 1 ~ 0, # yes ref
+        exercise == 2 ~ 1, 
+          .default = exercise
+      ),
+      stroke = case_when(
+        stroke == 2 ~ 0,
+          .default = stroke
+      ), 
+      asthma = case_when(
+        asthma == 2 ~ 0,
+          .default = asthma
+      ), 
+      
+      heart_attack = case_when(
+        heart_attack == 2 ~ 0,
+          .default = heart_attack
+      ),
+      
+      ever_depression = case_when(
+        ever_depression == 2 ~ 0,
+          .default = ever_depression
+      ),
+      
+      ever_arthritis = case_when(
+        ever_arthritis == 2 ~ 0,
+          .default = ever_arthritis
+      ),
+     
+      dm_type = case_when(
+        dm_type == 2 ~ 0,
+          .default = dm_type
+      )
+    )
+
+summary(final_data_recoded)
+```
+
+#### Check to see that recoding worked
+```{r}
+skim(final_data_recoded)
+final_data_recoded %>% tabyl(sex)
+final_data_recoded %>% tabyl(metropolis)
+final_data_recoded %>% tabyl(bmi_cat)
+final_data_recoded %>% tabyl(marital)
+final_data_recoded %>% tabyl(ethnicity)
+final_data_recoded %>% tabyl(education)
+final_data_recoded %>% tabyl(employment)
+
+final_data_recoded %>% tabyl(mental_health)
+final_data_recoded %>% tabyl(physical_health)
+final_data_recoded %>% tabyl(age_grp)
+final_data_recoded %>% tabyl(last_checkup)
+final_data_recoded %>% tabyl(exercise)
+final_data_recoded %>% tabyl(heart_attack)
+final_data_recoded %>% tabyl(asthma)
+
+final_data_recoded %>% tabyl(stroke)
+final_data_recoded %>% tabyl(ever_depression)
+final_data_recoded %>% tabyl(ever_arthritis)
+
+final_data_recoded %>% tabyl(dm_type)
+final_data_recoded %>% tabyl(memory)
+final_data_recoded %>% tabyl(walk)
+final_data_recoded %>% tabyl(deaf)
+final_data_recoded %>% tabyl(sight)
+```
+
+#### Convert variables to factor
+```{r}
+diabetes_data_factor <- final_data_recoded %>%
+  mutate(across(c(sex, bmi_cat, sight, memory, walk, deaf, metropolis, marital, education, employment, ethnicity, age_grp, physical_health, mental_health, last_checkup, exercise, heart_attack, stroke, asthma, ever_depression, ever_arthritis, dm_type), as.factor))
+```
+
+## Data Split 
+Split the dataset into training and test sets
+```{r}
+set.seed(1123581321)
+
+data_split <- initial_validation_split(
+  diabetes_data_factor,
+  strata = dm_type, 
+  prop = c(0.6, 0.05)) 
+
+train_data <- training(data_split)
+test_data     <- testing(data_split)
+
+```
+
+# Descriptive Statistics
+```{r}
+descriptives <- diabetes_data_factor
+
+descriptives <- descriptives %>%
+	mutate(depression = case_when(
+		ever_depression == 0 ~ "No",
+    ever_depression == 1 ~ "Yes"
+	),
+	dmtype = case_when(
+		dm_type == 0 ~ "Type 2 DM",
+    dm_type == 1 ~ "Type 1 DM"
+	),
+	sex = case_when(
+		sex == 0 ~ "Male",
+    sex == 1 ~ "Female"
+	)
+	)
+
+#Chart of Depression
+bar_depression <- ggplot(descriptives, aes(depression)) + 
+                geom_bar() + 
+                labs(x = "Proportion of adults living with diabetes with depression") + 
+                theme(axis.text.x = element_text(angle = 360))       
+plot(bar_depression)
+
+#Chart of DM Type
+bar_dmtype <- ggplot(descriptives, aes(dmtype)) + 
+                geom_bar() + 
+                labs(x = "Type of diabetes") + 
+                theme(axis.text.x = element_text(angle = 360))       
+plot(bar_dmtype)
+
+# Chart of age of diabetes diagnosis
+agedm_histo <- ggplot(descriptives, aes(age_had_dm)) + 
+              geom_histogram() + 
+              labs(x = "Age of diabetes diagnosis") +
+              scale_x_continuous(limits = c(0, 100))
+plot(agedm_histo)
+
+#Chart of Sex
+bar_sex <- ggplot(descriptives, aes(sex)) + 
+                geom_bar() + 
+                labs(x = "Sex of respondents") + 
+                theme(axis.text.x = element_text(angle = 360))       
+plot(bar_sex)
+
+```
+
+```{r}
+summary(descriptives$age_had_dm)
+```
+
+
+# Model A - Logistic Regression
+
+## Specify the model
+```{r}
+logistic_model <- logistic_reg() %>%
+        set_engine("glm") %>%
+        set_mode("classification") %>% 
+        fit(ever_depression ~ ., data = train_data)
+```
+
+## Use trained model on test data
+```{r}
+pred_class <- predict(logistic_model,
+                      new_data = test_data,
+                      type = "class")
+
+table(pred_class$.pred_class)
+```
+
+### Observed counts in outcome (test data)
+```{r}
+table(test_data$ever_depression)
+```
+
+### Generate predicted probabilities
+```{r}
+pred_prob <- predict(logistic_model,
+                      new_data = test_data,
+                      type = "prob")
+head(pred_prob)
+```
+
+### Compare predicted probabilities to observed class
+```{r}
+diabetes_results <- test_data %>%
+  select(ever_depression) %>%
+  bind_cols(pred_class, pred_prob)
+
+head(diabetes_results)
+```
+
+## Model Evaluation
+### Confusion matrix
+```{r}
+conf_mat(diabetes_results, truth = ever_depression,
+         estimate = .pred_class)
+```
+
+### Accuracy
+```{r}
+accuracy(diabetes_results, truth = ever_depression,
+         estimate = .pred_class)
+```
+
+### Sensitivity
+```{r}
+sens(diabetes_results, truth = ever_depression,
+    estimate = .pred_class)
+```
+
+### Specificity
+```{r}
+spec(diabetes_results, truth = ever_depression,
+    estimate = .pred_class)
+```
+
+### Precision
+```{r}
+precision(diabetes_results, truth = ever_depression,
+    estimate = .pred_class)
+```
+
+### ROC Curve
+```{r}
+roc_auc(diabetes_results,
+        truth = ever_depression,
+        .pred_0)
+
+roc_curve <- diabetes_results %>%
+  roc_curve(truth = ever_depression, .pred_0) %>%
+  autoplot()
+
+plot(roc_curve)
+```
+
+#### All metrics
+```{r}
+metrics <- metric_set(accuracy, sens, spec, precision, recall, f_meas)
+
+all_metrics_lr <- metrics(diabetes_results,
+               truth = ever_depression,
+               estimate = .pred_class)
+               
+kable(all_metrics_lr)
+```
+
+### Feature importance
+```{r}
+coeff <- tidy(logistic_model) %>%
+  filter(term != "(Intercept)") %>%
+  arrange(desc(abs(estimate))) %>%
+  slice_head(n = 15)
+
+kable(coeff)
+
+ggplot(coeff, aes(x = reorder(term, abs(estimate)), y = estimate, fill = estimate > 0)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("tomato", "steelblue"),
+                    labels = c("Decrease", "Increase"),
+                    name   = "Odds person with DM has depression") +
+  labs(
+    title = "Top 10 Most Important Features — Logistic Regression",
+    x     = NULL,
+    y     = "Coefficient Estimate"
+  ) +
+  theme_minimal()
+```
+
+# Model B - K Nearest Neighbor
+
+## Create KNN Recipe
+```{r}
+diabetes_recipe <- 
+  recipe(ever_depression ~ ., data = train_data) %>%
+  step_unknown() %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_normalize(all_numeric_predictors()) %>% ### Mean center and standardize (z-score) the numeric predictors
+  step_zv(all_predictors()) 
+```
+
+## Set KNN Engine
+```{r}
+knn_m <- nearest_neighbor(neighbors = tune()) |>
+                set_mode("classification") |> 
+                set_engine("kknn")
+
+k_tuning <- grid_regular(
+              neighbors(range = c(2,10)
+              ))
+
+ctrl <- control_resamples(save_pred = TRUE)
+
+cross_validation <- vfold_cv(train_data, v = 5)
+```
+
+## Create KNN Workflow
+```{r}
+diabetes_wflow_knn <- 
+  workflow() %>% 
+  add_model(knn_m) %>% 
+  add_recipe(diabetes_recipe)
+
+diabetes_wflow_knn
+```
+
+## Tune KNN Hyperparameters
+```{r}
+knn_tune <- tune_grid(
+              diabetes_wflow_knn, 
+              resamples = cross_validation,
+              grid = k_tuning, 
+              control = ctrl
+)
+
+knn_tune |> collect_metrics()
+```
+
+## Use KNN on Train Data
+```{r}
+best_neighbors <- knn_tune |>
+                    select_best(metric = "accuracy") |> 
+                    pull(neighbors)
+
+
+knn_best_train <- diabetes_wflow_knn |>
+                    finalize_workflow(
+                      select_best(x = knn_tune, metric = "accuracy")
+                    )
+
+knn_best_train
+```
+
+## Use KNN on Test Data
+```{r}
+knn_best_train_fit <- knn_best_train |> last_fit(data_split)
+
+knn_best_train_fit |> collect_metrics()
+```
+
+# Session Info
+```{r results='hide'}
+sessionInfo()
+```
+

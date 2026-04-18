@@ -1,0 +1,52 @@
+```{r}
+set.seed(1123581321)
+
+num_data_split <- initial_validation_split(
+  diabetes_data_num,
+  strata = dm_type, 
+  prop = c(0.6, 0.05)) 
+
+num_train_data <- training(data_split)
+num_test_data     <- testing(data_split)
+
+```
+
+```{r}
+set.seed(10)
+
+### Model
+kmeans_model <- k_means(num_clusters = 5) %>%
+                  set_engine("stats")
+kmeans_model
+```
+
+```{r}
+### Recipe 
+kmeans_recipe <- recipe( ~., data = num_train_data)
+```
+
+```{r}
+set.seed(10)
+
+### Workflow
+kmeans_workflow <- workflow() %>%
+    add_recipe(kmeans_recipe) %>%
+    add_model(kmeans_model)
+```
+
+```{r}
+set.seed(10)
+
+kmeans_fit <- kmeans_workflow %>% fit(data=num_train_data)
+
+kmeans_fit
+```
+
+```{r}
+clusters <- kmeans_fit %>% extract_cluster_assignment()
+clusters <- as.data.frame(clusters)
+
+names(clusters) <- c("cluster")
+data$clusters <- clusters$cluster
+```
+

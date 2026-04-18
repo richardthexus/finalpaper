@@ -1,0 +1,38 @@
+---
+title: "Machine Learning - Binary Logistic Regression"
+author: "Richard Adejumola"
+date: "2026-04-10"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    code_folding: show
+---
+
+
+# Background 
+
+Diabetes is a metabolic disease that affects the body’s ability to metabolize glucose [1]. Without early diagnosis or proper clinical management, diabetes can affect domains of health, including physical and mental health [2]. With regard to mental health, diabetes has been associated with depression in a bidirectional relationship---either as the outcome results in a statistically significant effect size [3]. In addition to the association between diabetes and depression, the literature suggests that the depression rates are three times higher among persons with type 1 diabetes compared to the healthy population, as well as two times higher in people with type 2 diabetes [4]. 
+
+
+# Research Objectives 
+For adults living with diabetes in the United States: 
+
+1. Using a binary logistic regression algorithm, classify lifetime diagnosis of depression based on diabetes type, sociodemographic characteristics, and comorbidities. 
+
+2. Using a K-Nearest Neighbor algorithm, classify lifetime diagnosis of depression based on diabetes type, sociodemographic characteristics, and comorbidities. 
+
+3. Evaluate and compare the performances of the algorithms. 
+
+# Methodology
+
+## Study Design
+The data used in this study will be obtained from the Behavioral Risk Factor Surveillance System (BRFSS) 2024 component [5]. The BRFSS is an annual telephone cross-sectional survey by the Centers for Disease Control and Prevention (CDC) to collect cross-sectional data on health-related indicators [5]. Eligible participants are aged 18 years and older with stable housing arrangements (i.e., living in a private household or college dorm), and randomly selected from participating states and territories in the US [5].  
+
+## Outcome variable
+* Lifetime diagnosis with depression 
+
+
+# Model Comparison
+
+By comparable metrics (accuracy and ROC), both the logistic model and KNN performed well `(accuracy & roc > 75%)` in discriminating between persons with diabetes who have depression vs. those who do not. However, the binary logistic regression model achieves better performance than the KNN algorithm `(accuracy = 81.8% > 78.6%, roc = 84.2% > 77.1%)`. 

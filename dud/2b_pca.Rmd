@@ -1,0 +1,163 @@
+```{r}
+
+pca_recipe <- recipe(~., data = train_data) %>%
+
+  update_role(id, new_role = "id") %>%
+  step_dummy(all_nominal_predictors(), one_hot = FALSE) %>%
+  step_impute_median(all_numeric_predictors()) %>%
+  step_scale(all_numeric_predictors()) %>%
+  step_center(all_numeric_predictors()) %>%
+  step_zv(all_numeric_predictors()) %>%
+  step_pca(all_numeric_predictors(), threshold = 0.80, num_comp = 10, id = "pca")
+
+pca_recipe
+```
+
+# ── 2. Prep (estimate parameters on training data) ────────────────────────────
+```{r}
+pca_prepared <- prep(pca_recipe)
+pca_prepared
+```
+
+# ── 3. Bake (apply to data) ───────────────────────────────────────────────────
+```{r}
+
+train_baked <- bake(pca_prepared, new_data = NULL)        # transformed train set
+test_baked  <- bake(pca_prepared, new_data = test_data)   # transformed test set
+```
+
+# ── 4. Variance explained ─────────────────────────────────────────────────────
+```{r}
+variance_tbl <- tidy(pca_prepared, id = "pca", type = "variance")
+```
+
+# Scree plot
+```{r}
+
+variance_tbl %>%
+  filter(terms == "percent variance") %>%
+  ggplot(aes(x = component, y = value)) +
+  geom_col(fill = "steelblue") +
+  geom_line(aes(group = 1), colour = "grey40") +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = scales::breaks_pretty()) +
+  labs(
+    title = "Scree Plot — Variance Explained per Component",
+    x     = "Principal Component",
+    y     = "% Variance Explained"
+  ) +
+  theme_minimal()
+```
+
+# Cumulative variance plot
+```{r}
+
+variance_tbl %>%
+  filter(terms == "cumulative percent variance") %>%
+  ggplot(aes(x = component, y = value)) +
+  geom_line(colour = "steelblue", linewidth = 1) +
+  geom_point(size = 2, colour = "steelblue") +
+  geom_hline(yintercept = 80, linetype = "dashed", colour = "red") +
+  scale_x_continuous(breaks = scales::breaks_pretty()) +
+  labs(
+    title = "Cumulative Variance Explained",
+    x     = "Principal Component",
+    y     = "Cumulative % Variance",
+    caption = "Red dashed line = 80% threshold"
+  ) +
+  theme_minimal()
+
+
+loadings_tbl <- tidy(pca_prepared, id = "pca", type = "coef")
+
+```
+
+```{r}
+# Top 10 contributors to PC1 and PC2
+loadings_tbl %>%
+  filter(component %in% c("PC1", "PC2", 'PC3', 'PC4', 'PC5')) %>%
+  group_by(component) %>%
+  slice_max(abs(value), n = 10) %>%
+  ungroup() %>%
+  mutate(terms = reorder_within(terms, abs(value), component)) %>%
+  ggplot(aes(x = terms, y = value, fill = value > 0)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~component, scales = "free_y") +
+  coord_flip() +
+  scale_x_reordered() +
+  scale_fill_manual(values = c("tomato", "steelblue")) +
+  labs(
+    title = "Top 10 Variable Loadings — PC1 - PC5",
+    x     = 'variable',
+    y     = "Loading"
+  ) +
+  theme_minimal()
+```
+
+# 6. PC scores scatter plot (PC1 vs PC2)
+```{r}
+
+ggplot(train_baked, aes(x = 'PC1', y = 'PC2')) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm") +
+  labs(x = "PC1", y = "PC2") +
+  theme_minimal()
+```
+
+# 7. Inspect outputs
+```{r}
+
+glimpse(train_baked)
+glimpse(test_baked)
+```
+
+# PC Regression
+```{r}
+logistic_model <- logistic_reg() %>%
+        set_engine("glm") %>%
+        set_mode("classification") 
+```
+
+
+```{r}
+pca_reg_recipe <- recipe(ever_depression ~., data = train_data) %>%
+  update_role(id, new_role = "id") %>%
+  step_scale(all_numeric_predictors()) %>%
+  step_center(all_numeric_predictors()) %>%
+  step_pca(all_numeric_predictors(), id = "pca_id")
+
+pca_reg_recipe
+```
+
+```{r}
+bmi_workflow <- 
+        workflow() %>%
+        add_model(logistic_model) %>% 
+        add_recipe(pca_reg_recipe)
+
+bmi_workflow
+```
+
+```{r}
+bmi_fit <- 
+  bmi_workflow %>% 
+  fit(data = train_data)
+```
+
+```{r}
+bmi_fit_extract <- bmi_fit %>% 
+                    extract_fit_parsnip() %>% 
+                    tidy()
+bmi_fit_extract
+```
+
+```{r}
+bmi_predicted <- augment(bmi_fit, test_data)
+
+ggplot(bmi_predicted, aes(x = ever_depression, y = .pred_class)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm") +
+  labs(x = "Measured BMI", y = "Predicted BMI") +
+  theme_minimal()
+```
+
