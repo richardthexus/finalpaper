@@ -368,10 +368,10 @@ final_data_recoded <- final_data %>%
       age_grp = case_when(
         age_grp == 6 ~ 0, #65 years and older ref
         age_grp == 1 ~ 1,
-        age_grp == 2 ~ 1,
-        age_grp == 3 ~ 1,
-        age_grp == 4 ~ 1,
-        age_grp == 5 ~ 2,
+        age_grp == 2 ~ 2,
+        age_grp == 3 ~ 3,
+        age_grp == 4 ~ 4,
+        age_grp == 5 ~ 5,
           .default = age_grp
       ),
       physical_health = case_when(
@@ -433,8 +433,11 @@ summary(final_data_recoded)
 ```
 
 #### Check to see that recoding worked
-```{r}
+```{r results='hide'}
 skim(final_data_recoded)
+```
+
+```{r}
 final_data_recoded %>% tabyl(sex)
 final_data_recoded %>% tabyl(metropolis)
 final_data_recoded %>% tabyl(bmi_cat)
@@ -461,7 +464,6 @@ final_data_recoded %>% tabyl(walk)
 final_data_recoded %>% tabyl(deaf)
 final_data_recoded %>% tabyl(sight)
 ```
-
 #### Convert variables to factor
 ```{r}
 diabetes_data_factor <- final_data_recoded %>%
@@ -499,7 +501,15 @@ descriptives <- descriptives %>%
 	sex = case_when(
 		sex == 0 ~ "Male",
     sex == 1 ~ "Female"
-	)
+	),
+	age_grp = case_when(
+    age_grp == 0 ~ "Age 65 years and older", #65 years and older ref
+    age_grp == 1 ~ 'Age 18 to 24 years',
+    age_grp == 2 ~ 'Age 25 to 34 years',
+    age_grp == 3 ~ 'Age 35 to 44 years',
+    age_grp == 4 ~ 'Age 45 to 54 years',
+    age_grp == 5 ~ 'Age 55 to 64 years',
+      )
 	)
 
 #Chart of Depression
@@ -530,6 +540,12 @@ bar_sex <- ggplot(descriptives, aes(sex)) +
                 theme(axis.text.x = element_text(angle = 360))       
 plot(bar_sex)
 
+# Chart of age group
+bar_age <- ggplot(descriptives, aes(age_grp)) + 
+                geom_bar() + 
+                labs(x = "Age of respondents") + 
+                theme(axis.text.x = element_text(angle = 90))       
+plot(bar_age)
 ```
 
 ```{r}
@@ -539,7 +555,7 @@ summary(descriptives$age_had_dm)
 
 # Model A - Logistic Regression
 
-## Specify the model
+## Specify the model on train data
 ```{r}
 logistic_model <- logistic_reg() %>%
         set_engine("glm") %>%
